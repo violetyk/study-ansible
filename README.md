@@ -274,6 +274,7 @@ ansible-playbook -i hosts simple-playbook.yml --check
 
 
 ## playbookを--checkしたあと、実行してみる
+
 ```sh
 vagrant@ubuntu-1404:~$ ansible-playbook -i hosts simple-playbook.yml --check
 
@@ -360,3 +361,126 @@ tasks:
 
 
 # Best Practiceに沿った構成
+
+- http://docs.ansible.com/ansible/playbooks_best_practices.html
+- roleを指定して、BestPractice構成のディレクトリを作成
+`ansible-playbook ansible-directories.yml -i hosts --extra-vars  '{"roles":["common", "wordpress"]}'`
+
+
+
+```
+.
+├── ansible-directories.yml
+
+├── development
+├── staging
+├── production
+
+├── group_vars/
+├── host_vars/
+
+├── library/
+├── filter_plugins/
+
+├── roles/
+│   ├── common/
+│   │   ├── tasks/
+│   │   │   └── main.yml
+│   │   ├── handlers/
+│   │   │   └── main.yml
+│   │   ├── files/
+│   │   │   ├── bar.txt
+│   │   │   └── foo.sh
+│   │   ├── templates/
+│   │   │   └── ntp.conf.j2
+│   │   ├── vars/
+│   │   │   └── main.yml
+│   │   ├── defaults/
+│   │   │   └── main.yml
+│   │   └── meta/
+│   │        └── main.yml
+│   └── wordpress/
+│       ├── defaults/
+│       ├── files/
+│       ├── handlers/
+│       ├── meta/
+│       ├── tasks/
+│       ├── templates/
+│       └── vars/
+
+├── site.yml
+├── common.yml
+├── dbservers.yml
+└── webservers.yml
+```
+
+|ファイル、ディレクトリ|役割|
+|:--|:--|
+|development|development環境用インベントリファイル|
+|staging|staging環境用インベントリファイル|
+|production|production環境用インベントリファイル|
+|group_vars/|インベントリファイルで指定するグループごとの変数を定義するのに使う（roleではない。roleの変数は`roles/{role_name}/vars/`）ファイル名はインベントリファイルで設定するグループ名で作成する。|
+|host_vars/|ホストごとの変数を定義するのに使う。ファイル名はインベントリファイルで指定するホスト名。|
+|library/|カスタムモジュール置き場（オプション）|
+|filter_plugins/|カスタムフィルタープラグイン置き場（オプション）|
+|site.yml|プレイブックのマスタ|
+|webservers.yml|webserver用のプレイブック。site.ymlから`- include: webservers.yml`する|
+|dbservers.yml|dbservers用のプレイブック。site.ymlから`- include: dbservers.yml`する|
+|roles/|roles/配下に、role名ごとにディレクトリを作成する。|
+|roles/*/tasks/|実務を行うtask定義をこのディレクトリ配下ファイルにかく。`main.yml`がまず読み込まれる。`main.yml`からincludeすることで複数ファイルを読み込ませることが可能|
+|roles/*/handlers/|サービス再起動などをさせる場合には`notify`定義で呼び出すが、呼び出されるハンドラはここに記述する。`main.yml`がまず読み込まれる。|
+|roles/*/files/|roleのtaskで使うファイルモジュール`copy`が`src`として使うファイルをここに置く。|
+|roles/*/templates/|roleのtaskで使うファイルモジュール`template`が使うファイルをここに置く。テンプレートエンジンJinja2が使われる。拡張子は`.j2`。|
+|roles/*/vars/|roleの設定をここに置く。`main.yml`が最初に読み込まれる。|
+|roles/*/defaults/|roleの変数のdefault設定をここに置く。`main.yml`が最初に読み込まれる。この変数の優先度が一番低い。|
+|roles/*/meta/|role間の依存設定をここに置く。`main.yml`が最初に読み込まれる。|
+
+
+## 依存設定の書き方
+
+- 依存関係を設定すると、依存先のroleが先に実行される。
+- 依存関係は再帰的にたどられる。
+- 依存関係は複数回参照されても、最初の1回だけ実行されるが、`allow_deplicates`を`true`にすれば、毎回実行することもできる。
+
+
+- mysql/serverがmysql/clientに依存する場合
+- この場合、mysqlclient, mysqlserverの順番に実行される。
+
+roles/mysql/server/meta/main.yml
+
+```yml
+---
+dependencies:
+	- { role: mysql/client }
+```
+
+- roleの依存関係に、実行条件も指定できる
+
+```yml
+---
+dependencies:
+  - { role: lxc/redhat, when: "ansible_os_family == 'RedHat'" }
+  - { role: lxc/debian, when: "ansible_os_family == 'Debian'" }
+```
+
+
+# playbookを作っていくやり方の模索
+
+- テスト用にVagrantでホストを立てる
+- テスト用のVM1台に1ロール分作ってみる
+- roleをつくっていく
+- その後に、ホストorグループに対してroleを割り当てる
+- taskにタグをつけておくと、`--tags / -t`オプションでそのタグだけ実行できて便利
+  - `tags: mysql`
+- ansible-playbook -i development site.yml --syntax
+- ansible-playbook -i development site.yml --list-tasks
+- ansible-playbook -i development site.yml --check
+- ansible-playbook -i development site.yml --tags=mysql
+
+- common
+  - [x] apt-get update
+  - [ ] sshの設定
+  - [ ] iptablesの設定
+
+- mysql
+  - [ ] mysql5.6のインストール

@@ -1,0 +1,12 @@
+---
+- hosts: wordpress
+  become: yes
+  roles:
+    - common
+    - mysql
+  # var_prompt:
+    # - name : "dbpassword"
+      # prompt: "Please enter MySQL wordpress user password"
+      # default: "wordpress"
+
+
