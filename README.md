@@ -26,7 +26,7 @@ vagrant box list
 
 ## 仮想マシン起動
 ```sh
-cd study-ansible
+cd study-ansible/tutorial
 vagrant init ubuntu-14.04
 vagrant up
 ```
@@ -150,9 +150,9 @@ www[001:006].example.com
 ## ansible.cfgとは
 - ansibleの設定
 - 探す順
-  - カレントディレクトリ
-  - 環境変数の `ANSIBLE_CONFIG` or `~/ansible.cfg`
-  - `/etc/ansible/ansible.cfg`
+  - 1. カレントディレクトリのansible.cnf
+  - 2. 環境変数の `ANSIBLE_CONFIG` or `~/ansible.cfg`
+  - 3. `/etc/ansible/ansible.cfg`
 
 
 ## node1からnode2をもう一度操作してみる
@@ -236,10 +236,10 @@ ansible-playbook --help
 
 ```
 # シンタックスチェック
-ansible-playbook simple-playbook.yml --syntax-check
+ansible-playbook -i hosts simple-playbook.yml --syntax-check
 
 # タスクの一覧を確認
-ansible-playbook simple-playbook.yml --list-tasks
+ansible-playbook -i hosts simple-playbook.yml --list-tasks
 
 # dry-run
 ansible-playbook -i hosts simple-playbook.yml --check
@@ -341,7 +341,7 @@ PLAY RECAP ********************************************************************
 - 対象サーバから情報を集めるタスク
 - setup モジュール
 - 集める必要が無い場合には、playbook.ymlに`gather_facts: no`
-- ansible -i hosts 192.168.33.12 -m setup
+- `ansible -i hosts 192.168.33.12 -m setup`
 - 集めた情報はtaskのオプションやテンプレート(jinja2)で使える
   - `{{ ansible_eth0["ipv4"]["address"] }}`
   - `{{ ansible_eth0.ipv4.address }}`
@@ -358,3 +358,5 @@ tasks:
     when: ansible_os_family == "Debian"
 ```
 
+
+# Best Practiceに沿った構成

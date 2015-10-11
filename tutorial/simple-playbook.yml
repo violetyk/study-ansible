@@ -1,0 +1,8 @@
+- hosts: test-servers
+  become: yes
+  tasks:
+    - name: be sure httpd is installed
+      apt: name=apache2 state=installed
+
+    - name: be sure httpd is running and enabled
+      service: name=apache2 state=started enabled=yes
